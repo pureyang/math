@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math for Screentime</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow-x: hidden; }
+        .container { min-height: 100vh; background: #f3f4f6; position: relative; }
+        .home-screen { min-height: 100vh; display: flex; flex-direction: column; padding: 24px; }
+        .title { text-align: center; margin-bottom: 32px; margin-top: 48px; font-size: 48px; font-weight: bold; color: #111827; }
+        .flex-1 { flex: 1; }
+        .start-card { background: white; border-radius: 24px; padding: 48px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 500px; }
+        .start-btn { display: flex; flex-direction: column; align-items: center; gap: 24px; cursor: pointer; border: none; background: none; transition: transform 0.2s; }
+        .start-btn:hover { transform: scale(1.05); }
+        .start-circle { width: 128px; height: 128px; border-radius: 50%; border: 8px solid #3b82f6; display: flex; align-items: center; justify-content: center; }
+        .start-arrow { color: #3b82f6; font-size: 72px; }
+        .start-text { font-size: 48px; font-weight: bold; color: #3b82f6; }
+        .bottom-nav { display: flex; justify-content: space-around; align-items: center; padding: 16px; background: white; border-radius: 9999px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-top: 16px; }
+        .nav-btn { padding: 8px; cursor: pointer; border: none; background: none; }
+        .nav-x { width: 48px; height: 48px; border-radius: 50%; border: 2px solid #111827; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+        .practice-screen { min-height: 100vh; display: flex; flex-direction: column; background: white; position: relative; }
+        .progress-bar { width: 100%; background: #e5e7eb; height: 8px; }
+        .progress-fill { background: #3b82f6; height: 8px; transition: width 0.3s; }
+        .practice-header { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #e5e7eb; }
+        .practice-content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 32px; position: relative; }
+        .problem-display { text-align: center; }
+        .problem-num { font-size: 72px; margin-bottom: 8px; }
+        .problem-op { display: flex; align-items: center; justify-content: center; gap: 16px; font-size: 72px; margin-bottom: 8px; }
+        .problem-line { border-top: 4px solid #111827; width: 192px; margin: 0 auto 16px; }
+        .problem-answer { font-size: 60px; height: 64px; color: #2563eb; font-weight: bold; min-width: 100px; }
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid #e5e7eb; }
+        .key { height: 96px; font-size: 36px; border: 1px solid #e5e7eb; cursor: pointer; background: white; }
+        .key:hover { background: #f9fafb; }
+        .key:active { background: #f3f4f6; }
+        .key:disabled { background: #f3f4f6; cursor: not-allowed; }
+        
+        /* Bear celebration animation - positioned in practice content area */
+        .bear-celebration {
+            position: absolute;
+            width: 250px;
+            height: 350px;
+            z-index: 1000;
+            pointer-events: none;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .bear-celebration.slide-left {
+            right: -250px;
+            animation: slideInLeft 0.5s forwards;
+        }
+        .bear-celebration.slide-right {
+            left: -250px;
+            animation: slideInRight 0.5s forwards;
+        }
+        .bear-celebration.slide-out-left {
+            animation: slideOutLeft 0.5s forwards;
+        }
+        .bear-celebration.slide-out-right {
+            animation: slideOutRight 0.5s forwards;
+        }
+        @keyframes slideInLeft {
+            to { right: 20px; }
+        }
+        @keyframes slideInRight {
+            to { left: 20px; }
+        }
+        @keyframes slideOutLeft {
+            to { right: -250px; }
+        }
+        @keyframes slideOutRight {
+            to { left: -250px; }
+        }
+        .bear-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .speech-bubble {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 12px 16px;
+            border-radius: 16px;
+            border: 3px solid #111827;
+            font-size: 16px;
+            font-weight: bold;
+            max-width: 220px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 18px solid white;
+        }
+        .speech-bubble::before {
+            content: '';
+            position: absolute;
+            bottom: -23px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 23px solid #111827;
+        }
+        
+        .results-screen { min-height: 100vh; background: #f3f4f6; padding: 24px; }
+        .results-title { margin-bottom: 24px; font-size: 20px; font-weight: bold; color: #111827; }
+        .result-card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 12px; }
+        .result-row { display: flex; align-items: center; justify-content: space-between; }
+        .result-icon { width: 24px; height: 24px; color: #3b82f6; }
+        .result-label { font-weight: bold; color: #111827; }
+        .result-sublabel { font-size: 14px; color: #3b82f6; font-weight: 600; }
+        .result-value { font-size: 28px; font-weight: bold; text-align: right; }
+        .result-subvalue { font-size: 14px; color: #6b7280; }
+        .congrats-card { background: linear-gradient(to right, #3b82f6, #8b5cf6); border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 24px; }
+        .congrats-text { font-size: 28px; font-weight: bold; color: white; }
+        .keep-practicing { background: white; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .keep-title { font-size: 18px; font-weight: bold; color: #111827; margin-bottom: 8px; }
+        .keep-message { font-size: 14px; color: #6b7280; }
+        .nav-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; cursor: pointer; border: none; background: white; }
+        .nav-item:hover { background: #f9fafb; }
+        .nav-label { font-size: 14px; font-weight: bold; margin-top: 4px; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; z-index: 999; }
+        .modal-content { background: white; width: 100%; border-radius: 24px 24px 0 0; max-height: 80vh; overflow: auto; padding: 24px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .modal-title { font-size: 28px; font-weight: bold; }
+        .modal-close { font-size: 36px; cursor: pointer; border: none; background: none; }
+        .setting-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+        .setting-label { font-weight: 600; color: #374151; }
+        .setting-input { width: 80px; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; text-align: center; font-weight: bold; font-size: 18px; }
+        .setting-input:focus { outline: none; border-color: #3b82f6; }
+        .setting-range { display: flex; align-items: center; gap: 8px; }
+        .setting-range input { width: 64px; }
+        .setting-checkbox { width: 24px; height: 24px; cursor: pointer; }
+        .debug-text { font-size: 14px; color: #6b7280; }
+        .icon-svg { width: 24px; height: 24px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        // Congratulatory messages (will use {name} placeholder)
+        const CONGRATS_MESSAGES = [
+            "Way to go! Keep going {name}.",
+            "Amazing work, {name}!",
+            "You're on fire!",
+            "Brilliant, {name}!",
+            "Keep it up, superstar!",
+            "Fantastic job!",
+            "You're crushing it!",
+            "Math genius at work!",
+            "Incredible, {name}!",
+            "You got this!",
+            "Perfect answer!",
+            "Outstanding work!",
+            "You're unstoppable!",
+            "Wow, so smart!",
+            "Nailed it, {name}!",
+            "You're a math wizard!",
+            "Excellent thinking!",
+            "Bravo, {name}!",
+            "Keep shining!",
+            "You're amazing!"
+        ];
+        
+        // Bear images - reference from root folder
+        const BEAR_IMAGES = [
+            'bear1.png',
+            'bear2.png',
+            'bear3.png',
+            'bear4.png'
+        ];
+        
+        const Home = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+        );
+
+        const FileText = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+        );
+
+        const RefreshCw = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+        );
+
+        const Clock = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        );
+
+        const Wrench = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        );
+
+        const NamePrompt = ({ onSubmit }) => {
+          const [name, setName] = useState('');
+          
+          const handleSubmit = (e) => {
+            e.preventDefault();
+            if (name.trim()) {
+              onSubmit(name);
+            }
+          };
+          
+          return (
+            <div className="modal-overlay" style={{alignItems: 'center', justifyContent: 'center'}}>
+              <div style={{
+                background: 'white',
+                borderRadius: '24px',
+                padding: '40px',
+                maxWidth: '400px',
+                width: '90%',
+                textAlign: 'center'
+              }}>
+                <h2 style={{fontSize: '32px', fontWeight: 'bold', marginBottom: '24px', color: '#111827'}}>
+                  Welcome to Math for Screentime!
+                </h2>
+                <p style={{fontSize: '18px', marginBottom: '24px', color: '#6b7280'}}>
+                  What is your name?
+                </p>
+                <form onSubmit={handleSubmit}>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter your name"
+                    autoFocus
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      fontSize: '20px',
+                      border: '2px solid #d1d5db',
+                      borderRadius: '12px',
+                      marginBottom: '24px',
+                      textAlign: 'center',
+                      fontWeight: 'bold'
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      fontSize: '20px',
+                      fontWeight: 'bold',
+                      background: 'linear-gradient(to right, #3b82f6, #8b5cf6)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Let's Go!
+                  </button>
+                </form>
+              </div>
+            </div>
+          );
+        };
+
+        const PasswordPrompt = ({ onSubmit, onCancel }) => {
+          const [password, setPassword] = useState('');
+          
+          const handleSubmit = (e) => {
+            e.preventDefault();
+            onSubmit(password);
+            setPassword('');
+          };
+          
+          return (
+            <div className="modal-overlay" style={{alignItems: 'center', justifyContent: 'center'}}>
+              <div style={{
+                background: 'white',
+                borderRadius: '24px',
+                padding: '40px',
+                maxWidth: '400px',
+                width: '90%',
+                textAlign: 'center',
+                position: 'relative'
+              }}>
+                <button
+                  onClick={onCancel}
+                  style={{
+                    position: 'absolute',
+                    top: '16px',
+                    right: '16px',
+                    fontSize: '32px',
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    color: '#6b7280'
+                  }}
+                >
+                  ×
+                </button>
+                <h2 style={{fontSize: '28px', fontWeight: 'bold', marginBottom: '24px', color: '#111827'}}>
+                  Enter Password
+                </h2>
+                <p style={{fontSize: '16px', marginBottom: '24px', color: '#6b7280'}}>
+                  Password required to access settings
+                </p>
+                <form onSubmit={handleSubmit}>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password"
+                    autoFocus
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      fontSize: '20px',
+                      border: '2px solid #d1d5db',
+                      borderRadius: '12px',
+                      marginBottom: '24px',
+                      textAlign: 'center',
+                      fontWeight: 'bold',
+                      letterSpacing: '4px'
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      fontSize: '20px',
+                      fontWeight: 'bold',
+                      background: 'linear-gradient(to right, #3b82f6, #8b5cf6)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Unlock Settings
+                  </button>
+                </form>
+              </div>
+            </div>
+          );
+        };
+
+        const BearCelebration = ({ bearImage, message, direction, onComplete }) => {
+          const [isExiting, setIsExiting] = useState(false);
+          
+          useEffect(() => {
+            const timer = setTimeout(() => {
+              setIsExiting(true);
+              setTimeout(onComplete, 500);
+            }, 2000);
+            
+            return () => clearTimeout(timer);
+          }, [onComplete]);
+          
+          const slideClass = isExiting 
+            ? (direction === 'left' ? 'slide-out-left' : 'slide-out-right')
+            : (direction === 'left' ? 'slide-left' : 'slide-right');
+          
+          return (
+            <div className={`bear-celebration ${slideClass}`}>
+              <div className="speech-bubble">{message}</div>
+              <img src={bearImage} alt="Celebrating bear" className="bear-image" />
+            </div>
+          );
+        };
+
+        const MathTrainerApp = () => {
+          const [screen, setScreen] = useState('home');
+          const [problemSet, setProblemSet] = useState([]);
+          const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
+          const [userAnswer, setUserAnswer] = useState('');
+          const [problemResults, setProblemResults] = useState([]);
+          const [startTime, setStartTime] = useState(null);
+          const [sessionHistory, setSessionHistory] = useState([]);
+          const [showListing, setShowListing] = useState(false);
+          const [problemsPerSession, setProblemsPerSession] = useState(10);
+          const [rangeStart, setRangeStart] = useState(1);
+          const [rangeEnd, setRangeEnd] = useState(12);
+          const [minProblemsForReward, setMinProblemsForReward] = useState(30);
+          const [debugMode, setDebugMode] = useState(false);
+          const [showSettings, setShowSettings] = useState(false);
+          const [showBear, setShowBear] = useState(false);
+          const [bearData, setBearData] = useState(null);
+          const [messageIndex, setMessageIndex] = useState(0);
+          const [studentName, setStudentName] = useState('');
+          const [showNamePrompt, setShowNamePrompt] = useState(false);
+          const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+
+          // Obfuscated password - decode to get actual password
+          const getSettingsPassword = () => {
+            const encoded = [50, 48, 51, 53]; // ASCII codes for '2035'
+            return String.fromCharCode(...encoded);
+          };
+
+          useEffect(() => {
+            // Check if student name is already saved
+            const savedName = localStorage.getItem('studentName');
+            if (savedName) {
+              setStudentName(savedName);
+            } else {
+              // First time loading - prompt for name
+              setShowNamePrompt(true);
+            }
+            
+            localStorage.removeItem('mathTrainerHistory');
+            setSessionHistory([]);
+            localStorage.removeItem('totalScreentime');
+          }, []);
+
+          const handleNameSubmit = (name) => {
+            if (name && name.trim()) {
+              const trimmedName = name.trim();
+              setStudentName(trimmedName);
+              localStorage.setItem('studentName', trimmedName);
+              setShowNamePrompt(false);
+            }
+          };
+
+          const handlePasswordSubmit = (password) => {
+            if (password === getSettingsPassword()) {
+              setShowPasswordPrompt(false);
+              setShowSettings(true);
+            } else {
+              alert('Incorrect password. Please try again.');
+            }
+          };
+
+          const handleSettingsClick = () => {
+            setShowPasswordPrompt(true);
+          };
+
+          const generateProblem = () => {
+            const num1 = Math.floor(Math.random() * (rangeEnd - rangeStart + 1)) + rangeStart;
+            const num2 = Math.floor(Math.random() * (rangeEnd - rangeStart + 1)) + rangeStart;
+            return {
+              num1,
+              num2,
+              answer: num1 * num2,
+              operation: '×'
+            };
+          };
+
+          const startSession = () => {
+            const problems = [];
+            const usedProblems = new Set();
+            let simpleMathCount = 0;
+            const maxSimpleMath = Math.floor(problemsPerSession * 0.20);
+            
+            const isSimpleFact = (num1, num2) => {
+              const simpleNumbers = [1, 2, 5, 10, 11];
+              return simpleNumbers.includes(num1) || simpleNumbers.includes(num2);
+            };
+            
+            while (problems.length < problemsPerSession) {
+              const problem = generateProblem();
+              const key1 = `${problem.num1}x${problem.num2}`;
+              const key2 = `${problem.num2}x${problem.num1}`;
+              
+              const isSimple = isSimpleFact(problem.num1, problem.num2);
+              
+              if (isSimple && simpleMathCount >= maxSimpleMath) {
+                continue;
+              }
+              
+              if (!usedProblems.has(key1) && !usedProblems.has(key2)) {
+                problems.push(problem);
+                usedProblems.add(key1);
+                usedProblems.add(key2);
+                
+                if (isSimple) {
+                  simpleMathCount++;
+                }
+              }
+            }
+            
+            setProblemSet(problems);
+            setCurrentProblemIndex(0);
+            setUserAnswer('');
+            setProblemResults([]);
+            setStartTime(Date.now());
+            setMessageIndex(0);
+            setScreen('practice');
+          };
+
+          const playSuccessSound = () => {
+            try {
+              const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+              const oscillator = audioContext.createOscillator();
+              const gainNode = audioContext.createGain();
+              
+              oscillator.connect(gainNode);
+              gainNode.connect(audioContext.destination);
+              
+              oscillator.frequency.value = 800;
+              oscillator.type = 'sine';
+              
+              gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+              gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+              
+              oscillator.start(audioContext.currentTime);
+              oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (e) {
+              console.error('Audio error:', e);
+            }
+          };
+
+          const showBearCelebration = () => {
+            const randomBear = BEAR_IMAGES[Math.floor(Math.random() * BEAR_IMAGES.length)];
+            const randomDirection = Math.random() > 0.5 ? 'left' : 'right';
+            const message = CONGRATS_MESSAGES[messageIndex].replace('{name}', studentName);
+            
+            setBearData({
+              image: randomBear,
+              direction: randomDirection,
+              message: message
+            });
+            setShowBear(true);
+            setMessageIndex((messageIndex + 1) % CONGRATS_MESSAGES.length);
+          };
+
+          const handleNumberClick = (num) => {
+            const newAnswer = userAnswer + num;
+            setUserAnswer(newAnswer);
+            
+            const currentProblem = problemSet[currentProblemIndex];
+            const expectedAnswer = currentProblem.answer.toString();
+            
+            if (newAnswer === expectedAnswer) {
+              playSuccessSound();
+              showBearCelebration();
+              
+              const timeTaken = (Date.now() - startTime) / 1000;
+              const result = {
+                problem: `${currentProblem.num1} ${currentProblem.operation} ${currentProblem.num2} = ${currentProblem.answer}`,
+                timeTaken,
+                num1: currentProblem.num1,
+                num2: currentProblem.num2
+              };
+
+              setProblemResults(prev => [...prev, result]);
+
+              if (currentProblemIndex < problemSet.length - 1) {
+                setTimeout(() => {
+                  setCurrentProblemIndex(prev => prev + 1);
+                  setUserAnswer('');
+                  setStartTime(Date.now());
+                }, 300);
+              } else {
+                setTimeout(() => {
+                  completeSession([...problemResults, result]);
+                }, 300);
+              }
+            }
+          };
+
+          const handleBackspace = () => {
+            setUserAnswer(prev => prev.slice(0, -1));
+          };
+
+          const calculateCurrentScreentime = () => {
+            try {
+              const tempHistory = [...sessionHistory];
+              if (problemResults.length > 0) {
+                const avgTime = problemResults.reduce((sum, r) => sum + r.timeTaken, 0) / problemResults.length;
+                tempHistory.push({
+                  date: new Date().toISOString(),
+                  results: problemResults,
+                  totalTime: problemResults.reduce((sum, r) => sum + r.timeTaken, 0),
+                  avgTime,
+                  score: problemResults.length
+                });
+              }
+
+              const totalProblemsSolved = tempHistory.reduce((sum, s) => sum + s.score, 0);
+              
+              if (totalProblemsSolved < minProblemsForReward) {
+                return 0;
+              }
+
+              let totalScreentimeSeconds = 0;
+              
+              tempHistory.forEach((session, index) => {
+                const sessionAvgTime = session.avgTime;
+                
+                let secondsPerProblem = 7;
+                const baselineTime = 5.0;
+                const improvement = baselineTime - sessionAvgTime;
+                
+                if (improvement > 0) {
+                  const halfSecondImprovements = improvement / 0.5;
+                  const multiplier = Math.pow(1.2, halfSecondImprovements);
+                  secondsPerProblem = 7 * multiplier;
+                }
+                
+                secondsPerProblem = Math.min(secondsPerProblem, 10);
+                
+                const problemsBeforeThisSession = tempHistory.slice(0, index).reduce((sum, s) => sum + s.score, 0);
+                
+                if (problemsBeforeThisSession >= minProblemsForReward) {
+                  totalScreentimeSeconds += secondsPerProblem * session.score;
+                } else if (problemsBeforeThisSession + session.score > minProblemsForReward) {
+                  const problemsAfterThreshold = (problemsBeforeThisSession + session.score) - minProblemsForReward;
+                  totalScreentimeSeconds += secondsPerProblem * problemsAfterThreshold;
+                }
+              });
+              
+              return Math.round(totalScreentimeSeconds / 60);
+            } catch (e) {
+              console.error('Error calculating screentime:', e);
+              return 0;
+            }
+          };
+
+          const calculateScreentime = () => {
+            try {
+              const totalProblemsSolved = sessionHistory.reduce((sum, s) => sum + s.score, 0);
+              
+              if (totalProblemsSolved < minProblemsForReward) {
+                return 0;
+              }
+
+              let totalScreentimeSeconds = 0;
+              
+              sessionHistory.forEach((session, index) => {
+                const sessionAvgTime = session.avgTime;
+                let secondsPerProblem = 7;
+                const baselineTime = 5.0;
+                const improvement = baselineTime - sessionAvgTime;
+                
+                if (improvement > 0) {
+                  const halfSecondImprovements = improvement / 0.5;
+                  const multiplier = Math.pow(1.2, halfSecondImprovements);
+                  secondsPerProblem = 7 * multiplier;
+                }
+                
+                secondsPerProblem = Math.min(secondsPerProblem, 10);
+                const problemsBeforeThisSession = sessionHistory.slice(0, index).reduce((sum, s) => sum + s.score, 0);
+                
+                if (problemsBeforeThisSession >= minProblemsForReward) {
+                  totalScreentimeSeconds += secondsPerProblem * session.score;
+                } else if (problemsBeforeThisSession + session.score > minProblemsForReward) {
+                  const problemsAfterThreshold = (problemsBeforeThisSession + session.score) - minProblemsForReward;
+                  totalScreentimeSeconds += secondsPerProblem * problemsAfterThreshold;
+                }
+              });
+              
+              return Math.round(totalScreentimeSeconds / 60);
+            } catch (e) {
+              console.error('Error:', e);
+              return 0;
+            }
+          };
+
+          const completeSession = (results) => {
+            try {
+              const totalTime = results.reduce((sum, r) => sum + r.timeTaken, 0);
+              const avgTime = totalTime / results.length;
+
+              const newSession = {
+                date: new Date().toISOString(),
+                results,
+                totalTime,
+                avgTime,
+                score: results.length
+              };
+
+              const updatedHistory = [...sessionHistory, newSession];
+              setSessionHistory(updatedHistory);
+              localStorage.setItem('mathTrainerHistory', JSON.stringify(updatedHistory));
+              
+              setScreen('results');
+            } catch (e) {
+              console.error('Error:', e);
+            }
+          };
+
+          const calculateAvgTime = () => {
+            if (problemResults.length === 0) return 0;
+            return problemResults.reduce((sum, r) => sum + r.timeTaken, 0) / problemResults.length;
+          };
+
+          const calculateDeviation = (timeTaken) => {
+            const avgTime = calculateAvgTime();
+            if (avgTime === 0) return 0;
+            const deviation = ((timeTaken - avgTime) / avgTime) * 100;
+            return deviation;
+          };
+
+          const currentProblem = problemSet[currentProblemIndex];
+          const screentimeReward = calculateScreentime();
+
+          return (
+            <div className="container">
+              {showNamePrompt && (
+                <NamePrompt onSubmit={handleNameSubmit} />
+              )}
+              
+              {showPasswordPrompt && (
+                <PasswordPrompt 
+                  onSubmit={handlePasswordSubmit}
+                  onCancel={() => setShowPasswordPrompt(false)}
+                />
+              )}
+              
+              {screen === 'home' && (
+                <div className="home-screen">
+                  <div className="title">Math for Screentime</div>
+
+                  <div className="flex-1">
+                    <div className="start-card">
+                      <button onClick={startSession} className="start-btn">
+                        <div className="start-circle">
+                          <div className="start-arrow">↑</div>
+                        </div>
+                        <div className="start-text">Start</div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bottom-nav">
+                    <div style={{width: '24px'}}></div>
+                    <button className="nav-btn">
+                      <div className="nav-x">×</div>
+                    </button>
+                    <button onClick={handleSettingsClick} className="nav-btn">
+                      <Wrench className="icon-svg" style={{color: '#374151'}} />
+                    </button>
+                  </div>
+
+                  {showSettings && (
+                    <div className="modal-overlay">
+                      <div className="modal-content">
+                        <div className="modal-header">
+                          <h3 className="modal-title">Settings</h3>
+                          <button onClick={() => setShowSettings(false)} className="modal-close">×</button>
+                        </div>
+                        
+                        <div>
+                          <div className="setting-row">
+                            <label className="setting-label">Student name:</label>
+                            <input
+                              type="text"
+                              value={studentName}
+                              onChange={(e) => {
+                                const newName = e.target.value;
+                                setStudentName(newName);
+                                if (newName.trim()) {
+                                  localStorage.setItem('studentName', newName.trim());
+                                }
+                              }}
+                              className="setting-input"
+                              style={{width: '150px'}}
+                            />
+                          </div>
+
+                          <div className="setting-row">
+                            <label className="setting-label">Problems per session:</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="50"
+                              value={problemsPerSession}
+                              onChange={(e) => setProblemsPerSession(Math.max(1, parseInt(e.target.value) || 1))}
+                              className="setting-input"
+                            />
+                          </div>
+
+                          <div className="setting-row">
+                            <label className="setting-label">Range:</label>
+                            <div className="setting-range">
+                              <input
+                                type="number"
+                                min="1"
+                                max="12"
+                                value={rangeStart}
+                                onChange={(e) => {
+                                  const val = Math.max(1, Math.min(12, parseInt(e.target.value) || 1));
+                                  setRangeStart(val);
+                                  if (val > rangeEnd) setRangeEnd(val);
+                                }}
+                                className="setting-input"
+                              />
+                              <span className="setting-label">to</span>
+                              <input
+                                type="number"
+                                min="1"
+                                max="12"
+                                value={rangeEnd}
+                                onChange={(e) => {
+                                  const val = Math.max(1, Math.min(12, parseInt(e.target.value) || 1));
+                                  setRangeEnd(val);
+                                  if (val < rangeStart) setRangeStart(val);
+                                }}
+                                className="setting-input"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="setting-row">
+                            <label className="setting-label">Min problems for reward:</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={minProblemsForReward}
+                              onChange={(e) => setMinProblemsForReward(Math.max(1, parseInt(e.target.value) || 1))}
+                              className="setting-input"
+                            />
+                          </div>
+
+                          <div className="setting-row">
+                            <label className="setting-label">Debug mode:</label>
+                            <input
+                              type="checkbox"
+                              checked={debugMode}
+                              onChange={(e) => setDebugMode(e.target.checked)}
+                              className="setting-checkbox"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {screen === 'practice' && currentProblem && (
+                <div className="practice-screen">
+                  <div className="progress-bar">
+                    <div 
+                      className="progress-fill"
+                      style={{ width: `${((currentProblemIndex + 1) / problemSet.length) * 100}%` }}
+                    ></div>
+                  </div>
+
+                  <div className="practice-header">
+                    <button onClick={() => setScreen('home')} className="nav-btn">
+                      <span style={{fontSize: '24px'}}>×</span>
+                    </button>
+                    <div style={{display: 'flex', gap: '16px', alignItems: 'center'}}>
+                      {debugMode && (
+                        <div className="debug-text">
+                          Screentime: {calculateCurrentScreentime()}m
+                        </div>
+                      )}
+                      <button className="nav-btn">
+                        <div style={{fontSize: '20px'}}>⌃</div>
+                      </button>
+                      <button className="nav-btn">
+                        <div style={{fontSize: '20px'}}>↗</div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="practice-content">
+                    <div className="problem-display">
+                      <div className="problem-num">{currentProblem.num1}</div>
+                      <div className="problem-op">
+                        <span>×</span>
+                        <span>{currentProblem.num2}</span>
+                      </div>
+                      <div className="problem-line"></div>
+                      <div className="problem-answer">
+                        {userAnswer || ' '}
+                      </div>
+                    </div>
+                    
+                    {showBear && bearData && (
+                      <BearCelebration
+                        bearImage={bearData.image}
+                        message={bearData.message}
+                        direction={bearData.direction}
+                        onComplete={() => setShowBear(false)}
+                      />
+                    )}
+                  </div>
+
+                  <div className="keypad">
+                    {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(num => (
+                      <button
+                        key={num}
+                        onClick={() => handleNumberClick(num)}
+                        className="key"
+                      >
+                        {num}
+                      </button>
+                    ))}
+                    <button disabled className="key"></button>
+                    <button onClick={() => handleNumberClick(0)} className="key">
+                      0
+                    </button>
+                    <button onClick={handleBackspace} className="key">
+                      ⌫
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {screen === 'results' && (
+                <div className="results-screen">
+                  <div className="results-title">
+                    {problemsPerSession} Multiplications of {rangeStart}-{rangeEnd} digit
+                  </div>
+
+                  <div style={{marginBottom: '24px'}}>
+                    <div className="result-card">
+                      <div className="result-row">
+                        <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                          <Clock className="result-icon" />
+                          <div>
+                            <div className="result-label">Time</div>
+                            <div className="result-sublabel">New best time!</div>
+                          </div>
+                        </div>
+                        <div style={{textAlign: 'right'}}>
+                          <div className="result-value">
+                            {Math.floor(problemResults.reduce((sum, r) => sum + r.timeTaken, 0))}s
+                          </div>
+                          <div className="result-subvalue">
+                            {calculateAvgTime().toFixed(2)}s / calc
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {screentimeReward > 0 ? (
+                      <div className="congrats-card">
+                        <div className="congrats-text">
+                          Congratulations {studentName}! You earned {screentimeReward} minutes of screentime
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="keep-practicing">
+                        <div className="keep-title">Keep practicing!</div>
+                        <div className="keep-message">
+                          {(() => {
+                            const totalSolved = sessionHistory.reduce((sum, s) => sum + s.score, 0);
+                            const remaining = minProblemsForReward - totalSolved;
+                            return remaining > 0 
+                              ? `Solve ${remaining} more problems to start earning screentime rewards`
+                              : 'Complete more sessions to earn screentime rewards';
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="result-card">
+                    <div className="nav-grid">
+                      <button onClick={() => setScreen('home')} className="nav-item">
+                        <Home className="icon-svg" />
+                        <div className="nav-label">Home</div>
+                      </button>
+                      <button onClick={() => setShowListing(!showListing)} className="nav-item">
+                        <FileText className="icon-svg" />
+                        <div className="nav-label">Listing</div>
+                      </button>
+                      <button onClick={startSession} className="nav-item">
+                        <RefreshCw className="icon-svg" />
+                        <div className="nav-label">Retry</div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {showListing && (
+                    <div className="modal-overlay">
+                      <div className="modal-content">
+                        <div className="modal-header">
+                          <h3 className="modal-title">Problem Details</h3>
+                          <button onClick={() => setShowListing(false)} className="modal-close">×</button>
+                        </div>
+                        <div>
+                          {problemResults.map((result, index) => {
+                            const deviation = calculateDeviation(result.timeTaken);
+                            const isFaster = deviation < 0;
+                            return (
+                              <div key={index} style={{borderBottom: '1px solid #e5e7eb', paddingBottom: '12px', marginBottom: '8px'}}>
+                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px'}}>
+                                  <div style={{color: '#9ca3af', fontSize: '14px'}}>({index + 1})</div>
+                                  <div style={{fontWeight: 'bold'}}>{result.problem}</div>
+                                </div>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px'}}>
+                                  <span style={{color: isFaster ? '#3b82f6' : '#6b7280'}}>
+                                    {isFaster ? '+' : '-'} {Math.abs(result.timeTaken - calculateAvgTime()).toFixed(2)}s 
+                                    ({isFaster ? '+' : ''}{deviation.toFixed(0)}%)
+                                  </span>
+                                  <div style={{flex: 1, background: '#e5e7eb', borderRadius: '9999px', height: '8px'}}>
+                                    <div 
+                                      style={{
+                                        height: '8px',
+                                        borderRadius: '9999px',
+                                        background: isFaster ? '#3b82f6' : '#9ca3af',
+                                        width: `${Math.min(Math.abs(deviation), 100)}%`
+                                      }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        ReactDOM.render(<MathTrainerApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
