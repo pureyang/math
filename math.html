@@ -92,6 +92,53 @@
             height: 100%;
             object-fit: contain;
         }
+
+        /* Confetti */
+        .confetti-container { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1500; }
+        .confetti-piece {
+            position: absolute;
+            top: -16px;
+            border-radius: 2px;
+            animation-name: confetti-fall;
+            animation-timing-function: cubic-bezier(0.3, 0.6, 0.4, 1);
+            animation-fill-mode: forwards;
+        }
+        @keyframes confetti-fall {
+            0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+            100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; }
+        }
+
+        /* Level-up banner + tier badge */
+        .levelup-banner {
+            background: linear-gradient(120deg, #f59e0b, #ef4444, #8b5cf6);
+            background-size: 200% 200%;
+            animation: levelup-shimmer 2.5s ease infinite, levelup-pop 0.5s ease;
+            border-radius: 20px;
+            padding: 24px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            margin-bottom: 16px;
+        }
+        .levelup-title { font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; opacity: 0.95; }
+        .levelup-name { font-size: 32px; font-weight: 800; margin-top: 4px; }
+        .levelup-emoji { font-size: 56px; line-height: 1; margin-bottom: 8px; animation: levelup-bounce 0.8s ease infinite alternate; }
+        @keyframes levelup-shimmer { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes levelup-pop { 0% { transform: scale(0.7); opacity: 0; } 60% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes levelup-bounce { from { transform: translateY(0) scale(1); } to { transform: translateY(-8px) scale(1.08); } }
+        .tier-badge {
+            display: flex; align-items: center; gap: 14px;
+            background: white; border-radius: 16px; padding: 16px 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px;
+            border-left: 6px solid var(--tier-color, #3b82f6);
+        }
+        .tier-badge-emoji { font-size: 40px; line-height: 1; }
+        .tier-badge-name { font-size: 20px; font-weight: 700; color: #111827; }
+        .tier-badge-sub { font-size: 13px; color: #6b7280; margin-top: 2px; }
+        .tier-badge-pace { margin-left: auto; text-align: right; }
+        .tier-badge-pace-val { font-size: 22px; font-weight: 800; color: var(--tier-color, #3b82f6); }
+        .tier-badge-pace-lbl { font-size: 11px; color: #9ca3af; }
+
         .speech-bubble {
             position: absolute;
             top: 0;
@@ -147,6 +194,13 @@
         .keep-practicing { background: white; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .keep-title { font-size: 18px; font-weight: bold; color: #111827; margin-bottom: 8px; }
         .keep-message { font-size: 14px; color: #6b7280; }
+        .balance-card { display: flex; align-items: center; justify-content: space-between; background: white; border-radius: 16px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 12px; }
+        .balance-info { text-align: left; }
+        .balance-value { font-size: 32px; font-weight: bold; color: #3b82f6; line-height: 1; }
+        .balance-unit { font-size: 16px; font-weight: 600; color: #3b82f6; margin-left: 4px; }
+        .balance-label { font-size: 13px; color: #6b7280; margin-top: 4px; }
+        .balance-btn { padding: 12px 28px; font-size: 18px; font-weight: bold; color: white; background: linear-gradient(to right, #3b82f6, #8b5cf6); border: none; border-radius: 9999px; cursor: pointer; }
+        .balance-btn:disabled { background: #d1d5db; cursor: not-allowed; }
         .nav-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; cursor: pointer; border: none; background: white; }
         .nav-item:hover { background: #f9fafb; }
@@ -291,7 +345,26 @@
             'bear3.png',
             'bear4.png'
         ];
-        
+
+        // Speed-mastery levels, ranked by average answer time (lower = faster = higher level).
+        // Celebrations scale with the level reached; hitting a new best level = level-up party.
+        const TIERS = [
+            { level: 1, name: 'Warming Up',  emoji: '🌱', color: '#10b981', confetti: 40 },
+            { level: 2, name: 'Quick Thinker', emoji: '🐇', color: '#3b82f6', confetti: 60 },
+            { level: 3, name: 'Speedy',       emoji: '🚀', color: '#8b5cf6', confetti: 85 },
+            { level: 4, name: 'Lightning',    emoji: '⚡', color: '#f59e0b', confetti: 110 },
+            { level: 5, name: 'Math Master',  emoji: '🏆', color: '#ef4444', confetti: 140 }
+        ];
+
+        // avgTime in seconds per problem -> tier. Wide spread: ≤2s top level, >20s base level.
+        const getTier = (avgTime) => {
+            if (avgTime <= 2) return TIERS[4];
+            if (avgTime <= 5) return TIERS[3];
+            if (avgTime <= 10) return TIERS[2];
+            if (avgTime <= 20) return TIERS[1];
+            return TIERS[0];
+        };
+
         const Home = ({ className }) => (
             <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -476,7 +549,7 @@
                   <p style={{fontSize: '14px', color: '#6b7280', marginBottom: '8px', fontStyle: 'italic'}}>
                     "Feedback is a Gift"
                   </p>
-                  <a 
+                  <a
                     href="mailto:yang.tang@lexcollc.biz"
                     style={{
                       fontSize: '14px',
@@ -492,9 +565,100 @@
           );
         };
 
+        const SpendPrompt = ({ available, onSpend, onCancel }) => {
+          const [minutes, setMinutes] = useState('');
+
+          const handleSubmit = (e) => {
+            e.preventDefault();
+            onSpend(parseInt(minutes, 10) || 0);
+          };
+
+          const quick = [15, 30, 60].filter(m => m <= available);
+
+          return (
+            <div className="modal-overlay" style={{alignItems: 'center', justifyContent: 'center'}}>
+              <div style={{
+                background: 'white', borderRadius: '24px', padding: '40px',
+                maxWidth: '400px', width: '90%', textAlign: 'center', position: 'relative'
+              }}>
+                <button onClick={onCancel} style={{
+                  position: 'absolute', top: '16px', right: '16px', fontSize: '32px',
+                  border: 'none', background: 'none', cursor: 'pointer', color: '#6b7280'
+                }}>×</button>
+                <h2 style={{fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', color: '#111827'}}>
+                  Use Screentime
+                </h2>
+                <p style={{fontSize: '16px', marginBottom: '24px', color: '#6b7280'}}>
+                  {available} minutes available
+                </p>
+                <form onSubmit={handleSubmit}>
+                  {quick.length > 0 && (
+                    <div style={{display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '16px'}}>
+                      {quick.map(m => (
+                        <button key={m} type="button" onClick={() => onSpend(m)} style={{
+                          flex: 1, padding: '12px', fontSize: '16px', fontWeight: 'bold',
+                          background: '#eff6ff', color: '#3b82f6', border: '2px solid #3b82f6',
+                          borderRadius: '12px', cursor: 'pointer'
+                        }}>{m}m</button>
+                      ))}
+                    </div>
+                  )}
+                  <input
+                    type="number" min="1" max={available} value={minutes}
+                    onChange={(e) => setMinutes(e.target.value)}
+                    placeholder="Minutes to use" autoFocus
+                    style={{
+                      width: '100%', padding: '16px', fontSize: '20px', border: '2px solid #d1d5db',
+                      borderRadius: '12px', marginBottom: '24px', textAlign: 'center', fontWeight: 'bold'
+                    }}
+                  />
+                  <button type="submit" disabled={available <= 0} style={{
+                    width: '100%', padding: '16px', fontSize: '20px', fontWeight: 'bold',
+                    background: available > 0 ? 'linear-gradient(to right, #3b82f6, #8b5cf6)' : '#d1d5db',
+                    color: 'white', border: 'none', borderRadius: '12px',
+                    cursor: available > 0 ? 'pointer' : 'not-allowed'
+                  }}>
+                    Use Screentime
+                  </button>
+                </form>
+              </div>
+            </div>
+          );
+        };
+
+        // Burst of falling confetti pieces. count + big scale with the achievement.
+        const Confetti = ({ count = 30, big = false }) => {
+          const colors = ['#3b82f6', '#8b5cf6', '#ef4444', '#f59e0b', '#10b981', '#ec4899', '#06b6d4'];
+          const pieces = [];
+          for (let i = 0; i < count; i++) {
+            const left = Math.random() * 100;
+            const dx = (Math.random() * 2 - 1) * 140;
+            const dy = 220 + Math.random() * 460;
+            const rot = Math.random() * 720 - 360;
+            const dur = 1.2 + Math.random() * 1.4;
+            const delay = Math.random() * 0.35;
+            const size = (big ? 9 : 6) + Math.random() * (big ? 11 : 7);
+            const color = colors[i % colors.length];
+            pieces.push(
+              <div key={i} className="confetti-piece" style={{
+                left: left + '%',
+                width: size + 'px',
+                height: (size * 0.55) + 'px',
+                background: color,
+                '--dx': dx + 'px',
+                '--dy': dy + 'px',
+                '--rot': rot + 'deg',
+                animationDuration: dur + 's',
+                animationDelay: delay + 's'
+              }} />
+            );
+          }
+          return <div className="confetti-container">{pieces}</div>;
+        };
+
         const BearCelebration = ({ bearImage, message, direction, onComplete }) => {
           const [isExiting, setIsExiting] = useState(false);
-          
+
           useEffect(() => {
             const timer = setTimeout(() => {
               setIsExiting(true);
@@ -538,6 +702,21 @@
           const [studentName, setStudentName] = useState('');
           const [showNamePrompt, setShowNamePrompt] = useState(false);
           const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+          const [lifetimeStats, setLifetimeStats] = useState({ problems: 0, activeSeconds: 0 });
+          const [screentimeSpent, setScreentimeSpent] = useState(0);
+          const [showSpendPrompt, setShowSpendPrompt] = useState(false);
+          const [problemWeights, setProblemWeights] = useState({});
+          const hadErrorRef = useRef(false);
+          const [bestLevel, setBestLevel] = useState(0);
+          const [lastSessionLevel, setLastSessionLevel] = useState(0);
+          const [leveledUp, setLeveledUp] = useState(false);
+          const [correctBurst, setCorrectBurst] = useState({ id: 0, count: 0, big: false });
+
+          // Commutative key (3x7 === 7x3) for per-fact mastery tracking
+          const factKey = (a, b) => {
+            const lo = Math.min(a, b), hi = Math.max(a, b);
+            return lo + 'x' + hi;
+          };
 
           // Obfuscated password - decode to get actual password
           const getSettingsPassword = () => {
@@ -554,11 +733,79 @@
               // First time loading - prompt for name
               setShowNamePrompt(true);
             }
-            
-            localStorage.removeItem('mathTrainerHistory');
-            setSessionHistory([]);
-            localStorage.removeItem('totalScreentime');
+
+            // Restore session history so progress + screentime rewards persist across reloads
+            let history = [];
+            try {
+              const savedHistory = localStorage.getItem('mathTrainerHistory');
+              if (savedHistory) {
+                history = JSON.parse(savedHistory);
+                setSessionHistory(history);
+              }
+            } catch (e) {
+              console.error('Error loading history:', e);
+            }
+
+            // Restore lifetime totals (monotonic - never reset, survive history trimming)
+            try {
+              const savedLifetime = localStorage.getItem('mathLifetimeStats');
+              if (savedLifetime) {
+                setLifetimeStats(JSON.parse(savedLifetime));
+              } else if (history.length) {
+                // Migrate: seed lifetime totals from any pre-existing history
+                const seeded = {
+                  problems: history.reduce((sum, s) => sum + (s.score || 0), 0),
+                  activeSeconds: history.reduce((sum, s) => sum + (s.totalTime || 0), 0)
+                };
+                setLifetimeStats(seeded);
+                localStorage.setItem('mathLifetimeStats', JSON.stringify(seeded));
+              }
+            } catch (e) {
+              console.error('Error loading lifetime stats:', e);
+            }
+
+            // Restore screentime already spent (redeemed)
+            try {
+              const savedSpent = localStorage.getItem('mathScreentimeSpent');
+              if (savedSpent) {
+                setScreentimeSpent(parseInt(savedSpent, 10) || 0);
+              }
+            } catch (e) {
+              console.error('Error loading spent screentime:', e);
+            }
+
+            // Restore per-fact difficulty weights (drives adaptive problem selection)
+            try {
+              const savedWeights = localStorage.getItem('mathProblemWeights');
+              if (savedWeights) {
+                setProblemWeights(JSON.parse(savedWeights));
+              }
+            } catch (e) {
+              console.error('Error loading problem weights:', e);
+            }
+
+            // Restore best mastery level reached (drives level-up celebrations)
+            try {
+              const savedLevel = localStorage.getItem('mathBestLevel');
+              if (savedLevel) {
+                setBestLevel(parseInt(savedLevel, 10) || 0);
+              }
+            } catch (e) {
+              console.error('Error loading best level:', e);
+            }
           }, []);
+
+          const handleSpendScreentime = (minutes) => {
+            const mins = Math.max(0, Math.floor(minutes) || 0);
+            if (mins <= 0) { setShowSpendPrompt(false); return; }
+            const earned = calculateScreentime();
+            const available = Math.max(0, earned - screentimeSpent);
+            const toSpend = Math.min(mins, available);   // can't overspend
+            const newSpent = screentimeSpent + toSpend;
+            setScreentimeSpent(newSpent);
+            localStorage.setItem('mathScreentimeSpent', String(newSpent));
+            setShowSpendPrompt(false);
+          };
 
           const handleNameSubmit = (name) => {
             if (name && name.trim()) {
@@ -583,8 +830,25 @@
           };
 
           const generateProblem = () => {
-            const num1 = Math.floor(Math.random() * (rangeEnd - rangeStart + 1)) + rangeStart;
-            const num2 = Math.floor(Math.random() * (rangeEnd - rangeStart + 1)) + rangeStart;
+            // Weighted random over all facts in range. Weak facts (slow / wrong in past
+            // sessions) carry weight > 1, so they surface more often. Default weight 1
+            // keeps every fact reachable.
+            const candidates = [];
+            let total = 0;
+            for (let a = rangeStart; a <= rangeEnd; a++) {
+              for (let b = rangeStart; b <= rangeEnd; b++) {
+                const w = problemWeights[factKey(a, b)] || 1;
+                candidates.push({ a, b, w });
+                total += w;
+              }
+            }
+            let roll = Math.random() * total;
+            let chosen = candidates[candidates.length - 1];
+            for (const c of candidates) {
+              roll -= c.w;
+              if (roll <= 0) { chosen = c; break; }
+            }
+            const num1 = chosen.a, num2 = chosen.b;
             return {
               num1,
               num2,
@@ -632,6 +896,7 @@
             setProblemResults([]);
             setStartTime(Date.now());
             setMessageIndex(0);
+            hadErrorRef.current = false;
             setScreen('practice');
           };
 
@@ -658,12 +923,12 @@
           };
 
           const showBearCelebration = () => {
-            // Random chance - 50% probability of showing bear
-            if (Math.random() < 0.5) {
+            // Higher chance now (75%) - more frequent encouragement.
+            if (Math.random() < 0.75) {
               const randomBear = BEAR_IMAGES[Math.floor(Math.random() * BEAR_IMAGES.length)];
               const randomDirection = Math.random() > 0.5 ? 'left' : 'right';
               const message = CONGRATS_MESSAGES[messageIndex].replace('{name}', studentName);
-              
+
               setBearData({
                 image: randomBear,
                 direction: randomDirection,
@@ -674,33 +939,51 @@
             setMessageIndex((messageIndex + 1) % CONGRATS_MESSAGES.length);
           };
 
+          // Confetti burst on a correct answer, sized by how fast it was solved.
+          const triggerCorrectBurst = (timeTaken) => {
+            const fast = timeTaken < 1;            // lightning-fast single answer
+            const quick = timeTaken < 2;
+            const count = fast ? 34 : quick ? 24 : 14;
+            setCorrectBurst(prev => ({ id: prev.id + 1, count, big: fast }));
+          };
+
           const handleNumberClick = (num) => {
             const newAnswer = userAnswer + num;
             setUserAnswer(newAnswer);
-            
+
             const currentProblem = problemSet[currentProblemIndex];
             const expectedAnswer = currentProblem.answer.toString();
-            
+
+            // A correct answer is always typed as a prefix of the expected digits.
+            // If newAnswer is no longer a prefix, the user entered a wrong digit -> mistake.
+            if (!expectedAnswer.startsWith(newAnswer)) {
+              hadErrorRef.current = true;
+            }
+
             if (newAnswer === expectedAnswer) {
               playSuccessSound();
-              
-              // Don't show bear on first problem (index 0) or last problem
-              const isFirstProblem = currentProblemIndex === 0;
+
+              const timeTaken = (Date.now() - startTime) / 1000;
+
+              // Confetti on EVERY correct answer (sized by speed).
+              triggerCorrectBurst(timeTaken);
+
+              // Bear on most answers; skip the last (results celebration takes over).
               const isLastProblem = currentProblemIndex === problemSet.length - 1;
-              
-              if (!isFirstProblem && !isLastProblem) {
+              if (!isLastProblem) {
                 showBearCelebration();
               }
-              
-              const timeTaken = (Date.now() - startTime) / 1000;
+
               const result = {
                 problem: `${currentProblem.num1} ${currentProblem.operation} ${currentProblem.num2} = ${currentProblem.answer}`,
                 timeTaken,
                 num1: currentProblem.num1,
-                num2: currentProblem.num2
+                num2: currentProblem.num2,
+                mistake: hadErrorRef.current
               };
 
               setProblemResults(prev => [...prev, result]);
+              hadErrorRef.current = false;
 
               if (currentProblemIndex < problemSet.length - 1) {
                 setTimeout(() => {
@@ -717,7 +1000,20 @@
           };
 
           const handleBackspace = () => {
+            // Needing to backspace implies a wrong digit was entered -> mistake.
+            if (userAnswer.length > 0) {
+              hadErrorRef.current = true;
+            }
             setUserAnswer(prev => prev.slice(0, -1));
+          };
+
+          // Reward rate (seconds earned per problem) from a session's average solve time.
+          // Faster = more. Anchors: <=1s -> 20s, 2s -> 15s, >=10s -> 5s (floor); linear scaling in between.
+          const getSecondsPerProblem = (avgTime) => {
+            if (avgTime <= 1) return 20;                       // cap
+            if (avgTime <= 2) return 20 - (avgTime - 1) * 5;   // 20 -> 15
+            if (avgTime <= 10) return 15 - (avgTime - 2) * 1.25; // 15 -> 5
+            return 5;                                          // floor
           };
 
           const calculateCurrentScreentime = () => {
@@ -743,20 +1039,8 @@
               let totalScreentimeSeconds = 0;
               
               tempHistory.forEach((session, index) => {
-                const sessionAvgTime = session.avgTime;
-                
-                let secondsPerProblem = 7;
-                const baselineTime = 5.0;
-                const improvement = baselineTime - sessionAvgTime;
-                
-                if (improvement > 0) {
-                  const halfSecondImprovements = improvement / 0.5;
-                  const multiplier = Math.pow(1.2, halfSecondImprovements);
-                  secondsPerProblem = 7 * multiplier;
-                }
-                
-                secondsPerProblem = Math.min(secondsPerProblem, 10);
-                
+                const secondsPerProblem = getSecondsPerProblem(session.avgTime);
+
                 const problemsBeforeThisSession = tempHistory.slice(0, index).reduce((sum, s) => sum + s.score, 0);
                 
                 if (problemsBeforeThisSession >= minProblemsForReward) {
@@ -785,18 +1069,7 @@
               let totalScreentimeSeconds = 0;
               
               sessionHistory.forEach((session, index) => {
-                const sessionAvgTime = session.avgTime;
-                let secondsPerProblem = 7;
-                const baselineTime = 5.0;
-                const improvement = baselineTime - sessionAvgTime;
-                
-                if (improvement > 0) {
-                  const halfSecondImprovements = improvement / 0.5;
-                  const multiplier = Math.pow(1.2, halfSecondImprovements);
-                  secondsPerProblem = 7 * multiplier;
-                }
-                
-                secondsPerProblem = Math.min(secondsPerProblem, 10);
+                const secondsPerProblem = getSecondsPerProblem(session.avgTime);
                 const problemsBeforeThisSession = sessionHistory.slice(0, index).reduce((sum, s) => sum + s.score, 0);
                 
                 if (problemsBeforeThisSession >= minProblemsForReward) {
@@ -830,7 +1103,41 @@
               const updatedHistory = [...sessionHistory, newSession];
               setSessionHistory(updatedHistory);
               localStorage.setItem('mathTrainerHistory', JSON.stringify(updatedHistory));
-              
+
+              // Accumulate lifetime totals - these only ever grow
+              const updatedLifetime = {
+                problems: lifetimeStats.problems + newSession.score,
+                activeSeconds: lifetimeStats.activeSeconds + newSession.totalTime
+              };
+              setLifetimeStats(updatedLifetime);
+              localStorage.setItem('mathLifetimeStats', JSON.stringify(updatedLifetime));
+
+              // Update per-fact weights: facts answered slower than this session's average,
+              // or with a mistake, get heavier (shown more often). Clean+fast facts decay
+              // back toward the floor of 1. Weight capped so nothing dominates.
+              const WEIGHT_CAP = 6;
+              const newWeights = { ...problemWeights };
+              results.forEach(r => {
+                const key = factKey(r.num1, r.num2);
+                const weak = r.mistake || r.timeTaken > avgTime;
+                const cur = newWeights[key] || 1;
+                newWeights[key] = weak
+                  ? Math.min(cur + 1, WEIGHT_CAP)
+                  : Math.max(1, cur - 0.5);
+              });
+              setProblemWeights(newWeights);
+              localStorage.setItem('mathProblemWeights', JSON.stringify(newWeights));
+
+              // Mastery: rank this session by speed, celebrate new personal-best levels.
+              const tier = getTier(avgTime);
+              setLastSessionLevel(tier.level);
+              const didLevelUp = tier.level > bestLevel;
+              if (didLevelUp) {
+                setBestLevel(tier.level);
+                localStorage.setItem('mathBestLevel', String(tier.level));
+              }
+              setLeveledUp(didLevelUp);
+
               setScreen('results');
             } catch (e) {
               console.error('Error:', e);
@@ -851,9 +1158,10 @@
 
           const currentProblem = problemSet[currentProblemIndex];
           const screentimeReward = calculateScreentime();
+          const screentimeAvailable = Math.max(0, screentimeReward - screentimeSpent);
 
-          const lifetimeProblems = sessionHistory.reduce((sum, s) => sum + (s.score || 0), 0);
-          const lifetimeSeconds = sessionHistory.reduce((sum, s) => sum + (s.totalTime || 0), 0);
+          const lifetimeProblems = lifetimeStats.problems;
+          const lifetimeSeconds = lifetimeStats.activeSeconds;
           const formatDuration = (secs) => {
             const total = Math.round(secs);
             const m = Math.floor(total / 60);
@@ -868,12 +1176,20 @@
               )}
               
               {showPasswordPrompt && (
-                <PasswordPrompt 
+                <PasswordPrompt
                   onSubmit={handlePasswordSubmit}
                   onCancel={() => setShowPasswordPrompt(false)}
                 />
               )}
-              
+
+              {showSpendPrompt && (
+                <SpendPrompt
+                  available={screentimeAvailable}
+                  onSpend={handleSpendScreentime}
+                  onCancel={() => setShowSpendPrompt(false)}
+                />
+              )}
+
               {screen === 'home' && (
                 <div className="home-screen">
                   <div className="title">Math for Screentime</div>
@@ -887,6 +1203,20 @@
                         <div className="start-text">Start</div>
                       </button>
                     </div>
+                  </div>
+
+                  <div className="balance-card">
+                    <div className="balance-info">
+                      <div className="balance-value">{screentimeAvailable}<span className="balance-unit">min</span></div>
+                      <div className="balance-label">screentime available</div>
+                    </div>
+                    <button
+                      onClick={() => setShowSpendPrompt(true)}
+                      disabled={screentimeAvailable <= 0}
+                      className="balance-btn"
+                    >
+                      Use
+                    </button>
                   </div>
 
                   <div style={{textAlign: 'center', fontSize: '13px', color: '#9ca3af', marginBottom: '12px'}}>
@@ -1064,6 +1394,10 @@
                         onComplete={() => setShowBear(false)}
                       />
                     )}
+
+                    {correctBurst.id > 0 && (
+                      <Confetti key={correctBurst.id} count={correctBurst.count} big={correctBurst.big} />
+                    )}
                   </div>
 
                   <div className="keypad">
@@ -1093,6 +1427,38 @@
                     {problemsPerSession} Multiplications of {rangeStart}-{rangeEnd} digit
                   </div>
 
+                  {(() => {
+                    const tier = TIERS[Math.max(0, lastSessionLevel - 1)] || TIERS[0];
+                    const avg = calculateAvgTime();
+                    const aps = avg > 0 ? (1 / avg) : 0;
+                    const showerCount = leveledUp ? tier.confetti : Math.round(tier.confetti * 0.6);
+                    return (
+                      <>
+                        <Confetti count={showerCount} big={tier.level >= 4 || leveledUp} />
+                        {leveledUp && (
+                          <div className="levelup-banner">
+                            <div className="levelup-emoji">{tier.emoji}</div>
+                            <div className="levelup-title">New Level Unlocked</div>
+                            <div className="levelup-name">{tier.name}!</div>
+                          </div>
+                        )}
+                        <div className="tier-badge" style={{'--tier-color': tier.color}}>
+                          <div className="tier-badge-emoji">{tier.emoji}</div>
+                          <div>
+                            <div className="tier-badge-name">Level {tier.level} · {tier.name}</div>
+                            <div className="tier-badge-sub">
+                              {leveledUp ? 'New personal best! 🎉' : `Best level reached: ${bestLevel}`}
+                            </div>
+                          </div>
+                          <div className="tier-badge-pace">
+                            <div className="tier-badge-pace-val">{aps.toFixed(2)}</div>
+                            <div className="tier-badge-pace-lbl">answers/sec</div>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+
                   <div style={{marginBottom: '24px'}}>
                     <div className="result-card">
                       <div className="result-row">
@@ -1117,8 +1483,20 @@
                     {screentimeReward > 0 ? (
                       <div className="congrats-card">
                         <div className="congrats-text">
-                          Congratulations {studentName}! You earned {screentimeReward} minutes of screentime
+                          Great job {studentName}! You have {screentimeAvailable} minutes of screentime available
                         </div>
+                        <button
+                          onClick={() => setShowSpendPrompt(true)}
+                          disabled={screentimeAvailable <= 0}
+                          style={{
+                            marginTop: '16px', padding: '12px 32px', fontSize: '18px', fontWeight: 'bold',
+                            color: '#3b82f6', background: 'white', border: 'none', borderRadius: '9999px',
+                            cursor: screentimeAvailable > 0 ? 'pointer' : 'not-allowed',
+                            opacity: screentimeAvailable > 0 ? 1 : 0.6
+                          }}
+                        >
+                          Use Screentime
+                        </button>
                       </div>
                     ) : (
                       <div className="keep-practicing">
@@ -1145,33 +1523,34 @@
                       Problems to Practice
                     </h3>
                     <p style={{fontSize: '14px', color: '#6b7280', marginBottom: '12px'}}>
-                      These took longer than average - practice these for faster times!
+                      Missed or slower than average - these will show up more often next time!
                     </p>
                     <div>
                       {(() => {
                         const avgTime = calculateAvgTime();
-                        const slowProblems = problemResults
+                        const weakProblems = problemResults
                           .map((result, index) => ({
                             ...result,
                             index: index + 1,
                             deviation: result.timeTaken - avgTime
                           }))
-                          .filter(p => p.deviation > 0)
-                          .sort((a, b) => b.deviation - a.deviation)
+                          .filter(p => p.mistake || p.deviation > 0)
+                          // Mistakes first, then slowest
+                          .sort((a, b) => (b.mistake === a.mistake ? b.deviation - a.deviation : (b.mistake ? 1 : -1)))
                           .slice(0, 3);
-                        
-                        if (slowProblems.length === 0) {
+
+                        if (weakProblems.length === 0) {
                           return (
                             <div style={{textAlign: 'center', padding: '16px', color: '#6b7280', fontSize: '14px'}}>
-                              Great job! All problems solved at consistent speed! 🎉
+                              Great job! All problems solved quickly and correctly! 🎉
                             </div>
                           );
                         }
-                        
-                        return slowProblems.map((problem, idx) => (
+
+                        return weakProblems.map((problem, idx) => (
                           <div key={idx} style={{
                             padding: '12px',
-                            borderBottom: idx < slowProblems.length - 1 ? '1px solid #e5e7eb' : 'none',
+                            borderBottom: idx < weakProblems.length - 1 ? '1px solid #e5e7eb' : 'none',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center'
@@ -1185,12 +1564,18 @@
                               </div>
                             </div>
                             <div style={{textAlign: 'right'}}>
-                              <div style={{fontSize: '16px', fontWeight: 'bold', color: '#ef4444'}}>
-                                +{problem.deviation.toFixed(1)}s
-                              </div>
-                              <div style={{fontSize: '12px', color: '#6b7280'}}>
-                                slower
-                              </div>
+                              {problem.mistake ? (
+                                <div style={{fontSize: '16px', fontWeight: 'bold', color: '#ef4444'}}>✗ missed</div>
+                              ) : (
+                                <>
+                                  <div style={{fontSize: '16px', fontWeight: 'bold', color: '#ef4444'}}>
+                                    +{problem.deviation.toFixed(1)}s
+                                  </div>
+                                  <div style={{fontSize: '12px', color: '#6b7280'}}>
+                                    slower
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
                         ));
